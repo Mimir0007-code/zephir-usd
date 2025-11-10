@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Zephir USD - Mint 100k USDZ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary: #3b82f6; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); text-align: center; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+    .container { max-width: 500px; margin: 0 auto; padding: 30px; background: var(--card); border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
+    .logo { width: 90px; margin-bottom: 15px; border-radius: 50%; border: 3px solid #3b82f6; }
+    h1 { font-size: 28px; margin: 10px 0; }
+    .tagline { color: #93c5fd; font-size: 16px; margin: 12px 0; }
+    .balance { font-size: 26px; font-weight: 700; margin: 25px 0; color: #fbbf24; }
+    button { background: var(--primary); color: white; border: none; padding: 16px 36px; font-size: 18px; font-weight: 600; border-radius: 14px; cursor: pointer; transition: 0.3s; width: 100%; margin: 15px 0; }
+    button:hover { background: #2563eb; transform: translateY(-2px); }
+    #status { margin-top: 15px; font-size: 16px; min-height: 24px; color: #86efac; }
+    .footer { margin-top: 40px; font-size: 13px; color: #64748b; }
+    .social { margin-top: 20px; }
+    .social a { color: #93c5fd; text-decoration: none; margin: 0 10px; }
+    @media (max-width: 600px) { .container { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="https://svgshare.com/i/1X5K.svg" class="logo" alt="Zephir USD">
+    <h1>Zephir USD</h1>
+    <p class="tagline">1 USDT = 100 000 USDZ • Peg 1:1 USD</p>
+    <div class="balance">Solde : <span id="balance">0</span> USDZ</div>
+    <button onclick="connectAndMint()">Mint 100k USDZ</button>
+    <p id="status">Connecte MetaMask pour commencer</p>
+    <div class="social">
+      <a href="https://x.com/Mimir0007" target="_blank">@Mimir0007</a> • 
+      <a href="https://bscscan.com/token/0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
+    </div>
+  </div>
+  <div class="footer">Zephir USD • BSC Mainnet • Nov 2025</div>
+
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+  <script>
+    
+    const PROXY_ADDRESS = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
+    
+
+    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
+
+    const ABI = [
+      "function mint(uint256 usdtAmount)",
+      "function balanceOf(address) view returns (uint256)"
+    ];
+    const USDT_ABI = ["function approve(address spender, uint256 value)"];
+
+    let signer, usdz, user;
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("Installe MetaMask !");
+        return;
+      }
+      await ethereum.request({ method: 'eth_requestAccounts' });
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      user = await signer.getAddress();
+      usdz = new ethers.Contract(PROXY_ADDRESS, ABI, signer);
+      document.getElementById("status").innerText = "Connecté !";
+      updateBalance();
+    }
+
+    async function updateBalance() {
+      if (!usdz || !user) return;
+      try {
+        const balance = await usdz.balanceOf(user);
+        document.getElementById("balance").innerText = balance.toString();
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
+    async function connectAndMint() {
+      await connectWallet();
+      if (!usdz) return;
+
+      document.getElementById("status").innerText = "Approbation USDT...";
+      const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
+      const amount = ethers.utils.parseUnits("1", 6); // 1 USDT = 1e6
+      await (await usdt.approve(PROXY_ADDRESS, amount)).wait();
+
+      document.getElementById("status").innerText = "Mint en cours...";
+      await (await usdz.mint(amount)).wait();
+
+      await updateBalance();
+      document.getElementById("status").innerText = "SUCCÈS ! +100 000 USDZ minté !";
+    }
+
+    // Auto-refresh balance
+    setInterval(() => { if (user) updateBalance(); }, 8000);
+  </script>
+</body>
+</html>
