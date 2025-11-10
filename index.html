@@ -59,8 +59,9 @@
     <h1>Zephir USD</h1>
     <p class="tagline">1 USDT = 100 000 USDZ • Peg 1:1 USD</p>
     <div class="balance">Solde : <span id="balance">0</span> USDZ</div>
-    <button type="button" id="mintBtn" onclick="startMint()" disabled>Mint 100k USDZ</button>
-    <p id="status">Chargement de ethers.js...</p>
+    <button id="connectBtn">Connecter MetaMask</button>
+    <button id="mintBtn" disabled>Mint 100k USDZ</button>
+    <p id="status">Chargement...</p>
     <div class="social">
       <a href="https://x.com/Mimir0007" target="_blank">@Mimir0007</a> • 
       <a href="https://bscscan.com/token/0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
@@ -68,22 +69,19 @@
   </div>
   <div class="footer">Zephir USD • BSC Mainnet • Nov 2025</div>
 
-  <!-- CHARGEMENT ULTRA RAPIDE DE ETHERS.JS -->
+  <!-- ETHERS.JS RAPIDE -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" defer></script>
 
   <script type="text/javascript" defer>
   window.addEventListener("DOMContentLoaded", async () => {
     const status = document.getElementById("status");
-    const btn = document.getElementById("mintBtn");
+    const connectBtn = document.getElementById("connectBtn");
+    const mintBtn = document.getElementById("mintBtn");
 
-    // Vérifie que ethers.js est bien chargé
     if (typeof ethers === "undefined") {
-      status.innerText = "❌ Erreur : ethers.js non chargé";
+      status.innerText = "❌ ethers.js non chargé";
       return;
     }
-
-    status.innerText = "Connecte MetaMask pour commencer";
-    btn.disabled = false;
 
     // === CONFIGURATION ===
     const PROXY_ADDRESS = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
@@ -93,29 +91,81 @@
 
     let provider, signer, user, usdz;
 
+    // ✅ Fonction centralisée pour afficher les erreurs
+    function showError(err) {
+      console.error(err);
+      let msg = err.reason || err.message || "Erreur inconnue";
+      if (msg.includes("(")) msg = msg.split("(")[0];
+      status.style.color = "#f87171";
+      status.innerText = "❌ " + msg;
+    }
+
+    // ✅ Forcer désactivation ENS pour BSC
+    async function setupProvider() {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      provider.resolveName = async (name) => name; // désactive ENS
+      signer = provider.getSigner();
+    }
+
+    // ✅ Vérification / switch réseau BSC
+    async function ensureBSC() {
+      const network = await provider.getNetwork();
+      if (network.chainId !== 56) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x38" }]
+          });
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: "0x38",
+                chainName: "Binance Smart Chain",
+                nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+                rpcUrls: ["https://bsc-dataseed.binance.org/"],
+                blockExplorerUrls: ["https://bscscan.com"]
+              }]
+            });
+          } else {
+            throw switchError;
+          }
+        }
+      }
+    }
+
+    // ✅ Connexion MetaMask
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) throw new Error("Installe MetaMask pour continuer.");
+        await setupProvider();
+        await ethereum.request({ method: 'eth_requestAccounts' });
+        await ensureBSC();
+        user = await signer.getAddress();
+        status.style.color = "#86efac";
+        status.innerText = `Connecté : ${user.substring(0,6)}...${user.slice(-4)}`;
+        mintBtn.disabled = false;
+        connectBtn.disabled = true;
+      } catch (err) {
+        showError(err);
+      }
+    }
+
+    // ✅ Mint 100k USDZ
     async function startMint() {
       try {
-        if (!window.ethereum) return alert("Installe MetaMask pour continuer.");
-
-        await ethereum.request({ method: 'eth_requestAccounts' });
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        user = await signer.getAddress();
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== 56) {
-          alert("Change de réseau pour Binance Smart Chain (Mainnet)");
-          return;
-        }
+        status.style.color = "#fbbf24";
+        status.innerText = "Vérification du solde USDT...";
+        const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
+        const balance = await usdt.balanceOf(user);
+        const usdtAmount = ethers.utils.parseUnits("1", 6);
+        if (balance.lt(usdtAmount)) throw new Error("Solde USDT insuffisant");
 
         usdz = new ethers.Contract(PROXY_ADDRESS, USDZ_ABI, signer);
-        const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
 
-        btn.disabled = true;
-        status.style.color = "#fbbf24";
-        status.innerText = "Approbation de 1 USDT en cours...";
-
-        const usdtAmount = ethers.utils.parseUnits("1", 6);
+        status.innerText = "Approbation de 1 USDT...";
+        mintBtn.disabled = true;
         await (await usdt.approve(PROXY_ADDRESS, usdtAmount)).wait();
 
         status.innerText = "Mint de 100 000 USDZ en cours...";
@@ -126,31 +176,30 @@
         status.style.color = "#86efac";
         status.innerText = "✅ SUCCÈS ! +100 000 USDZ mintés";
       } catch (err) {
-        console.error(err);
-        status.style.color = "#f87171";
-        status.innerText = "❌ ERREUR : " + (err.message?.split("(")[0] || "Échec");
+        showError(err);
       } finally {
-        btn.disabled = false;
+        mintBtn.disabled = false;
       }
     }
 
+    // ✅ Mise à jour du solde
     async function updateBalance() {
       if (!usdz || !user) return;
       try {
         const balance = await usdz.balanceOf(user);
-        document.getElementById("balance").innerText =
-          parseFloat(ethers.utils.formatUnits(balance, 18)).toFixed(2);
+        document.getElementById("balance").innerText = parseFloat(ethers.utils.formatUnits(balance, 18)).toFixed(2);
       } catch (e) {
-        console.error("Erreur balance :", e);
+        console.error(e);
       }
     }
 
-    window.startMint = startMint;
+    // Événements des boutons
+    connectBtn.onclick = connectWallet;
+    mintBtn.onclick = startMint;
+
+    // Auto-update balance toutes les 3s
     setInterval(() => { if (user && usdz) updateBalance(); }, 3000);
   });
-  </script>
-</body>
-</html>
   </script>
 </body>
 </html>
