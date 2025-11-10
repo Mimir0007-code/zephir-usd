@@ -8,14 +8,44 @@
   <style>
     :root { --primary: #3b82f6; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); text-align: center; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
-    .container { max-width: 500px; margin: 0 auto; padding: 30px; background: var(--card); border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      text-align: center;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 30px;
+      background: var(--card);
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+    }
     .logo { width: 90px; margin-bottom: 15px; border-radius: 50%; border: 3px solid #3b82f6; }
     h1 { font-size: 28px; margin: 10px 0; }
     .tagline { color: #93c5fd; font-size: 16px; margin: 12px 0; }
     .balance { font-size: 26px; font-weight: 700; margin: 25px 0; color: #fbbf24; }
-    button { background: var(--primary); color: white; border: none; padding: 16px 36px; font-size: 18px; font-weight: 600; border-radius: 14px; cursor: pointer; transition: 0.3s; width: 100%; margin: 15px 0; }
-    button:hover { background: #2563eb; transform: translateY(-2px); }
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 16px 36px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: 0.3s;
+      width: 100%;
+      margin: 15px 0;
+    }
+    button:hover:not(:disabled) { background: #2563eb; transform: translateY(-2px); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
     #status { margin-top: 15px; font-size: 16px; min-height: 24px; color: #86efac; }
     .footer { margin-top: 40px; font-size: 13px; color: #64748b; }
     .social { margin-top: 20px; }
@@ -29,55 +59,85 @@
     <h1>Zephir USD</h1>
     <p class="tagline">1 USDT = 100 000 USDZ • Peg 1:1 USD</p>
     <div class="balance">Solde : <span id="balance">0</span> USDZ</div>
-    <button onclick="mint()">Mint 100k USDZ</button>
-    <p id="status">Connecte MetaMask</p>
+    <button type="button" id="mintBtn" onclick="startMint()">Mint 100k USDZ</button>
+    <p id="status">Connecte MetaMask pour commencer</p>
     <div class="social">
       <a href="https://x.com/Mimir0007" target="_blank">@Mimir0007</a> • 
-      <a href="https://bscscan.com/token/0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
+      <a href="https://bscscan.com/token/0xREMPLACE_PAR_TON_PROXY" target="_blank">BscScan</a>
     </div>
   </div>
-  <div class="footer">Zephir USD • BSC Mainnet • 2025</div>
+  <div class="footer">Zephir USD • BSC Mainnet • Nov 2025</div>
 
-  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script>
-    const PROXY = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
-    const USDT = "0x55d398326f99059fF775485246999027B3197955";
-    const ABI = ["function mint(uint256)"];
+  <!-- ETHERS.JS -->
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="text/javascript"></script>
+
+  <script type="text/javascript">
+    // ⚙️ CONFIGURATION
+    const PROXY_ADDRESS = "0xREMPLACE_PAR_TON_PROXY_ICI";
+    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT BSC
+
+    const USDZ_ABI = ["function mint(uint256)", "function balanceOf(address) view returns (uint256)"];
     const USDT_ABI = ["function approve(address,uint256)"];
 
-    let usdz, user;
+    let provider, signer, user, usdz;
 
-    async function mint() {
-      if (!window.ethereum) return alert("MetaMask requis");
+    async function startMint() {
+      const btn = document.getElementById("mintBtn");
+      const status = document.getElementById("status");
       try {
+        if (!window.ethereum) return alert("Installe MetaMask pour continuer.");
+
         await ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
         user = await signer.getAddress();
-        usdz = new ethers.Contract(PROXY, ABI, signer);
+        const network = await provider.getNetwork();
 
-        document.getElementById("status").innerText = "Approbation...";
-        const usdt = new ethers.Contract(USDT, USDT_ABI, signer);
-        const amount = ethers.utils.parseUnits("1", 18);
-        await (await usdt.approve(PROXY, amount)).wait();
+        if (network.chainId !== 56) {
+          alert("Change de réseau pour Binance Smart Chain (Mainnet)");
+          return;
+        }
 
-        document.getElementById("status").innerText = "Mint...";
-        await (await usdz.mint(amount)).wait();
+        usdz = new ethers.Contract(PROXY_ADDRESS, USDZ_ABI, signer);
+        const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
 
-        await update();
-        document.getElementById("status").innerText = "SUCCÈS ! +100 000 USDZ";
-      } catch (e) {
-        document.getElementById("status").innerText = "ERREUR : " + e.message;
+        btn.disabled = true;
+        status.style.color = "#fbbf24";
+        status.innerText = "Approbation de 1 USDT en cours...";
+
+        const usdtAmount = ethers.utils.parseUnits("1", 6);
+        await (await usdt.approve(PROXY_ADDRESS, usdtAmount)).wait();
+
+        status.innerText = "Mint de 100 000 USDZ en cours...";
+        const mintAmount = ethers.utils.parseUnits("100000", 18);
+        await (await usdz.mint(mintAmount)).wait();
+
+        await updateBalance();
+        status.style.color = "#86efac";
+        status.innerText = "✅ SUCCÈS ! +100 000 USDZ mintés";
+
+      } catch (err) {
+        console.error(err);
+        status.style.color = "#f87171";
+        status.innerText = "❌ ERREUR : " + (err.message?.split("(")[0] || "Échec");
+      } finally {
+        btn.disabled = false;
       }
     }
 
-    async function update() {
+    async function updateBalance() {
       if (!usdz || !user) return;
-      const bal = await usdz.balanceOf(user);
-      document.getElementById("balance").innerText = bal.toString();
+      try {
+        const balance = await usdz.balanceOf(user);
+        document.getElementById("balance").innerText =
+          parseFloat(ethers.utils.formatUnits(balance, 18)).toFixed(2);
+      } catch (e) {
+        console.error("Erreur balance :", e);
+      }
     }
 
-    setInterval(update, 3000);
+    // Actualisation auto toutes les 3s
+    setInterval(() => { if (user && usdz) updateBalance(); }, 3000);
   </script>
 </body>
 </html>
