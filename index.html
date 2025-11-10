@@ -59,8 +59,8 @@
     <h1>Zephir USD</h1>
     <p class="tagline">1 USDT = 100 000 USDZ • Peg 1:1 USD</p>
     <div class="balance">Solde : <span id="balance">0</span> USDZ</div>
-    <button type="button" id="mintBtn" onclick="startMint()">Mint 100k USDZ</button>
-    <p id="status">Connecte MetaMask pour commencer</p>
+    <button type="button" id="mintBtn" onclick="startMint()" disabled>Mint 100k USDZ</button>
+    <p id="status">Chargement de ethers.js...</p>
     <div class="social">
       <a href="https://x.com/Mimir0007" target="_blank">@Mimir0007</a> • 
       <a href="https://bscscan.com/token/0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
@@ -68,22 +68,38 @@
   </div>
   <div class="footer">Zephir USD • BSC Mainnet • Nov 2025</div>
 
-  <!-- ETHERS.JS -->
-  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="text/javascript"></script>
+  <!-- CHARGE ETHERS.JS -->
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
 
   <script type="text/javascript">
     // ⚙️ CONFIGURATION
     const PROXY_ADDRESS = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
     const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT BSC
-
     const USDZ_ABI = ["function mint(uint256)", "function balanceOf(address) view returns (uint256)"];
     const USDT_ABI = ["function approve(address,uint256)"];
 
     let provider, signer, user, usdz;
 
+    // 🕐 Attendre que ethers.js soit chargé
+    function waitForEthers() {
+      const status = document.getElementById("status");
+      const btn = document.getElementById("mintBtn");
+
+      if (typeof ethers !== 'undefined') {
+        console.log("✅ ethers.js chargé :", ethers.version);
+        status.innerText = "Connecte MetaMask pour commencer";
+        btn.disabled = false;
+        return;
+      }
+      status.innerText = "Chargement de ethers.js...";
+      setTimeout(waitForEthers, 200);
+    }
+    waitForEthers();
+
     async function startMint() {
       const btn = document.getElementById("mintBtn");
       const status = document.getElementById("status");
+
       try {
         if (!window.ethereum) return alert("Installe MetaMask pour continuer.");
 
@@ -91,8 +107,8 @@
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         user = await signer.getAddress();
-        const network = await provider.getNetwork();
 
+        const network = await provider.getNetwork();
         if (network.chainId !== 56) {
           alert("Change de réseau pour Binance Smart Chain (Mainnet)");
           return;
@@ -115,7 +131,6 @@
         await updateBalance();
         status.style.color = "#86efac";
         status.innerText = "✅ SUCCÈS ! +100 000 USDZ mintés";
-
       } catch (err) {
         console.error(err);
         status.style.color = "#f87171";
@@ -136,7 +151,7 @@
       }
     }
 
-    // Actualisation auto toutes les 3s
+    // Actualisation auto du solde
     setInterval(() => { if (user && usdz) updateBalance(); }, 3000);
   </script>
 </body>
