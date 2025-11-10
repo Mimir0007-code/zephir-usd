@@ -63,43 +63,37 @@
     <p id="status">Chargement de ethers.js...</p>
     <div class="social">
       <a href="https://x.com/Mimir0007" target="_blank">@Mimir0007</a> • 
-      <a href="https://bscscan.com/token/0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
+      <a href="https://bscscan.com/token/0xREMPLACE_PAR_TON_PROXY" target="_blank">BscScan</a>
     </div>
   </div>
   <div class="footer">Zephir USD • BSC Mainnet • Nov 2025</div>
 
-  <!-- CHARGE ETHERS.JS -->
-  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+  <!-- CHARGEMENT ULTRA RAPIDE DE ETHERS.JS -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" defer></script>
 
-  <script type="text/javascript">
-    // ⚙️ CONFIGURATION
-    const PROXY_ADDRESS = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
-    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT BSC
+  <script type="text/javascript" defer>
+  window.addEventListener("DOMContentLoaded", async () => {
+    const status = document.getElementById("status");
+    const btn = document.getElementById("mintBtn");
+
+    // Vérifie que ethers.js est bien chargé
+    if (typeof ethers === "undefined") {
+      status.innerText = "❌ Erreur : ethers.js non chargé";
+      return;
+    }
+
+    status.innerText = "Connecte MetaMask pour commencer";
+    btn.disabled = false;
+
+    // === CONFIGURATION ===
+    const PROXY_ADDRESS = "0xREMPLACE_PAR_TON_PROXY_ICI";
+    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
     const USDZ_ABI = ["function mint(uint256)", "function balanceOf(address) view returns (uint256)"];
     const USDT_ABI = ["function approve(address,uint256)"];
 
     let provider, signer, user, usdz;
 
-    // 🕐 Attendre que ethers.js soit chargé
-    function waitForEthers() {
-      const status = document.getElementById("status");
-      const btn = document.getElementById("mintBtn");
-
-      if (typeof ethers !== 'undefined') {
-        console.log("✅ ethers.js chargé :", ethers.version);
-        status.innerText = "Connecte MetaMask pour commencer";
-        btn.disabled = false;
-        return;
-      }
-      status.innerText = "Chargement de ethers.js...";
-      setTimeout(waitForEthers, 200);
-    }
-    waitForEthers();
-
     async function startMint() {
-      const btn = document.getElementById("mintBtn");
-      const status = document.getElementById("status");
-
       try {
         if (!window.ethereum) return alert("Installe MetaMask pour continuer.");
 
@@ -151,8 +145,12 @@
       }
     }
 
-    // Actualisation auto du solde
+    window.startMint = startMint;
     setInterval(() => { if (user && usdz) updateBalance(); }, 3000);
+  });
+  </script>
+</body>
+</html>
   </script>
 </body>
 </html>
