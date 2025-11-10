@@ -33,17 +33,17 @@
     <p id="status">Connecte MetaMask pour commencer</p>
     <div class="social">
       <a href="https://x.com/Mimir0007" target="_blank">@Mimir0007</a> • 
-      <a href="https://bscscan.com/token/R0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
+      <a href="https://bscscan.com/token/0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
     </div>
   </div>
   <div class="footer">Zephir USD • BSC Mainnet • Nov 2025</div>
 
-  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
-  <script>
-    // ←←← REMPLACE CETTE LIGNE PAR TON ADRESSE PROXY ←←←
-    const PROXY_ADDRESS = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
-    // Exemple : const PROXY_ADDRESS = "0x1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t";
+  <!-- CHARGE ETHERS.JS D'ABORD -->
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="text/javascript"></script>
 
+  <script type="text/javascript">
+    
+    const PROXY_ADDRESS = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
     const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
 
     const ABI = [
@@ -54,7 +54,12 @@
 
     let signer, usdz, user;
 
+    // FONCTION PRINCIPALE — ATTEND ETHERS.JS
     async function connectAndMint() {
+      if (typeof ethers === 'undefined') {
+        alert("ethers.js n'est pas chargé. Rafraîchis la page.");
+        return;
+      }
       if (!window.ethereum) {
         alert("Installe MetaMask : https://metamask.io");
         return;
@@ -86,15 +91,15 @@
     }
 
     async function updateBalance() {
-      if (!usdz || !user) return;
+      if (!usdz || !user || typeof ethers === 'undefined') return;
       try {
         const balance = await usdz.balanceOf(user);
         document.getElementById("balance").innerText = balance.toString();
       } catch (e) {}
     }
 
+    // Rafraîchissement auto après connexion
     setInterval(() => { if (user && usdz) updateBalance(); }, 3000);
   </script>
 </body>
 </html>
- 
