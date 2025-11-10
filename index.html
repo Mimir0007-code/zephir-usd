@@ -29,58 +29,42 @@
     <h1>Zephir USD</h1>
     <p class="tagline">1 USDT = 100 000 USDZ • Peg 1:1 USD</p>
     <div class="balance">Solde : <span id="balance">0</span> USDZ</div>
-    <button onclick="startMint()">Mint 100k USDZ</button>
-    <p id="status">Chargement...</p>
+    <button onclick="connectAndMint()">Mint 100k USDZ</button>
+    <p id="status">Connecte MetaMask pour commencer</p>
     <div class="social">
       <a href="https://x.com/Mimir0007" target="_blank">@Mimir0007</a> • 
-      <a href="https://bscscan.com/token/0x633aC4B4819C1226b3c41da05845A897019e52C1" target="_blank">BscScan</a>
+      <a href="https://bscscan.com/token/0xREMPLACE_PAR_TON_PROXY" target="_blank">BscScan</a>
     </div>
   </div>
   <div class="footer">Zephir USD • BSC Mainnet • Nov 2025</div>
 
-  <!-- CHARGE ETHERS.JS -->
-  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="text/javascript"></script>
-
-  <script type="text/javascript">
-    // TON PROXY
-    const PROXY_ADDRESS = "0x633aC4B4819C1226b3c41da05845A897019e52C1";
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+  <script>
+    const PROXY_ADDRESS = "0xREMPLACE_PAR_TON_PROXY_ICI";
     const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
 
-    const ABI = ["function mint(uint256)", "function balanceOf(address) view returns (uint256)"];
+    const ABI = [
+      "function mint(uint256)",
+      "function balanceOf(address) view returns (uint256)"
+    ];
     const USDT_ABI = ["function approve(address,uint256)"];
 
-    let usdz, user;
+    let signer, usdz, user;
 
-    // ATTEND ETHERS.JS
-    function waitForEthers() {
-      if (typeof ethers !== 'undefined') {
-        document.getElementById("status").innerText = "Connecte MetaMask pour commencer";
-        return;
-      }
-      setTimeout(waitForEthers, 100);
-    }
-    waitForEthers();
-
-    async function startMint() {
-      if (typeof ethers === 'undefined') {
-        alert("ethers.js non chargé. Rafraîchis la page (Cmd + Shift + R).");
-        return;
-      }
-      if (!window.ethereum) {
-        alert("Installe MetaMask !");
-        return;
-      }
+    async function connectAndMint() {
+      if (!window.ethereum) return alert("Installe MetaMask : https://metamask.io");
 
       try {
         await ethereum.request({ method: 'eth_requestAccounts' });
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
+        signer = provider.getSigner();
         user = await signer.getAddress();
         usdz = new ethers.Contract(PROXY_ADDRESS, ABI, signer);
 
-        document.getElementById("status").innerText = "Approbation USDT...";
+        document.getElementById("status").innerText = "Connecté ! Approbation...";
+
         const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
-        const amount = ethers.utils.parseUnits("1", 6);
+        const amount = ethers.utils.parseUnits("1", 18); // USDT BSC = 18 décimales
         await (await usdt.approve(PROXY_ADDRESS, amount)).wait();
 
         document.getElementById("status").innerText = "Mint en cours...";
@@ -90,6 +74,7 @@
         document.getElementById("status").innerText = "SUCCÈS ! +100 000 USDZ";
 
       } catch (err) {
+        console.error(err);
         document.getElementById("status").innerText = "ERREUR : " + (err.message || "Échec");
       }
     }
